@@ -1,4 +1,5 @@
 #START of MITOCHONDRIA ANALYSIS
+import sys
 import re
 import json
 import csv
@@ -27,16 +28,16 @@ from libdvid import DVIDNodeService, encode_label_block
 from neuclease.dvid.server import fetch_server_info
 import neuclease
 from neuclease.dvid.labelmap import fetch_labelmap_voxels
-import matplotlib.pyplot as plt
-import matplotlib.image as mpimg
+#import matplotlib.pyplot as plt
+#import matplotlib.image as mpimg
 import skimage
 from skimage import external
 from scipy.spatial.distance import euclidean
 from skimage.graph import MCP_Geometric
 import numpy as np
-from bokeh.plotting import figure, show, output_file
-from bokeh.io import output_notebook
-output_notebook()
+#from bokeh.plotting import figure, show, output_file
+#from bokeh.io import output_notebook
+#output_notebook()
 from neuclease.dvid import fetch_labelmap_voxels
 from bokeh.palettes import Category20
 from dvidutils import LabelMapper
@@ -47,12 +48,21 @@ from neuprint import Client
 from tqdm import tqdm_notebook
 from numpy import size
 from numpy import dtype, array
-import neuroglancer
-neuroglancer.set_server_bind_address('0.0.0.0')
+#import neuroglancer
+#neuroglancer.set_server_bind_address('0.0.0.0')
 from numpy import transpose
 from neuclease.dvid import *
-from sklearn.cluster import KMeans
+#from sklearn.cluster import KMeans
 
+
+def main():
+    neuron_id = sys.argv[1]
+    result = process_neuron_mito(neuron_id)
+    if result is not True:
+        print("Oh crap, something went wrong")
+        sys.exit(1)
+    
+    print("DONE.")
 
 # we preprocess to gather all presynapses of given ID
 def preprocess(body_ID):
@@ -379,7 +389,11 @@ def process_neuron_mito(ID):
         counts3 = counts3.tolist()
         
     All_Neuro_Attr.update({Body_ID: Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists)})
-    with open(f'{Body_ID} dimensions.json', 'w') as outfile:
+    with open(f'{Body_ID}_dimensions.json', 'w') as outfile:
         json.dump(All_Neuro_Attr, outfile)
 
     return True
+
+
+if __name__ == "__main__":
+    main()
