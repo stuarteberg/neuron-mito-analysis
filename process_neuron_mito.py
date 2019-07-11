@@ -66,8 +66,9 @@ def main():
 
 # we preprocess to gather all presynapses of given ID
 def preprocess(body_ID):
+    body_ID = body_ID
     Neurons_FB = pd.read_csv('Neurons_FB.csv')
-    y = Neurons_FB[Neurons_FB.bodyId == body_ID]
+    y = Neurons_FB[Neurons_FB.bodyId == int(body_ID)]
     y = y[y.type == 'pre']
     return list(y[['x','y','z']].values), len(list(y[['x','y','z']].values))
 
@@ -148,7 +149,7 @@ def Mito_segregation(Mito_Dists, Body_ID):
     MITO1_DISTS = []
     MITO2_DISTS = []
     MITO3_DISTS = []
-    Mito_Dists = remove_empty({Body_ID:Mito_Dists[Body_ID]})
+    Mito_Dists = remove_empty({Body_ID:Mito_Dists[int(Body_ID)]})
     for i in [*Mito_Dists]:
         for j in range(len(Mito_Dists[i])):
             if Mito_Dists[i][j][0][1] == 1:
@@ -169,7 +170,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
     errors_from_scale = []
     #First we need to fetch the Neuron synapse info from neuprint
    
-    #for i in tqdm_notebook(range(len(synapses))):
+    #for i in range(len(synapses)):
     #    Synapse = list(synapses[i])
 
         #We define the centerpoint of our data we fetch as the synapse location
@@ -294,7 +295,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
 
 
 def Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists):
-    Neuro_Attr = counts1 + counts2 + counts3 + inf_dists[Body_ID]
+    Neuro_Attr = counts1 + counts2 + counts3 + inf_dists[int(Body_ID)]
     return Neuro_Attr
 
 #Main Function
@@ -304,7 +305,7 @@ def process_neuron_mito(ID):
     inf_dists = {}
 #Sample_Dists = {}
     #Preprocessing before Mito_Synapse_Distance
-    Body_ID = ID
+    Body_ID = int(ID)
     synapses, num_synapses = preprocess(Body_ID)
     dists = []
     errors_syn = []
@@ -332,9 +333,6 @@ def process_neuron_mito(ID):
         #print(local_bb)
         ((z0, y0, x0),(z1,y1,x1)) = local_bb
         seg_vol = seg_mask[z0:z1+1, y0:y1+1, x0:x1+1]
-        #print(np.shape(seg_vol))
-        #print(np.transpose(seg_vol.nonzero()))
-        #print([31, 31, 27] in np.transpose(seg_vol.nonzero()))
         seg_mito = mito[z0:z1+1, y0:y1+1, x0:x1+1]
         local_syn = [center - z0, center - y0, center - x0]
         #print(is_synapse_neuron(seg_vol, [local_syn]))
