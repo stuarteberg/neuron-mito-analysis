@@ -137,6 +137,16 @@ def boundary_box(seg_mask):
     raw_cords = np.transpose(seg_mask.nonzero())
     return seg_mask, (np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
 
+
+def filter_new_cords(new_cords, subvol):
+    shape_x, shape_y, shape_z = subvol
+    new_cord_2 = []
+    for i in range(len(new_cords)):
+        if new_cords[i][0] < shape_x and new_cords[i][1] < shape_y and new_cords[i][2] < shape_z:
+            new_cord_2.append(new_cords[i])
+    return new_cord_2
+
+
 def remove_empty(dicts):
     new_dicts = {}
     lsts = [*dicts]
@@ -187,6 +197,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
     #Synapse = synapse_cords[0]
     seg_vol = seg_vol.astype('uint64')
     subvol = seg_vol.astype('float64')
+    shape = subvol.shape
     #print([31, 31, 14] in np.transpose(subvol.nonzero()))
     #print(subvol[31][31][14])
     subvol[subvol == 0] = np.inf
@@ -239,10 +250,12 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
                 dist_lst.append((i*target_distance, min_dist_mito_type))
         else:
             new_cords = recoordinate_synapses(seg_vol, local_syn, 1)
-            mito_indexes = tuple(Mito_coordinates.transpose())
+            new_cords = filter_new_cords(new_cords, shape)
+	    mito_indexes = tuple(Mito_coordinates.transpose())
             if len(new_cords) == 0:
                 new_cords = recoordinate_synapses(seg_vol, local_syn, 2)
-                if len(new_cords) == 0:
+                new_cords = filter_new_cords(new_cords, shape)            
+		if len(new_cords) == 0:
                     errors_from_synapse_loc.append(Synapse)
                 else:
                     mcp = MCP_Geometric(subvol)
