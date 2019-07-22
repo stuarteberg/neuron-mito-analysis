@@ -251,11 +251,11 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
         else:
             new_cords = recoordinate_synapses(seg_vol, local_syn, 1)
             new_cords = filter_new_cords(new_cords, shape)
-	    mito_indexes = tuple(Mito_coordinates.transpose())
+            mito_indexes = tuple(Mito_coordinates.transpose())
             if len(new_cords) == 0:
                 new_cords = recoordinate_synapses(seg_vol, local_syn, 2)
                 new_cords = filter_new_cords(new_cords, shape)            
-		if len(new_cords) == 0:
+                if len(new_cords) == 0:
                     errors_from_synapse_loc.append(Synapse)
                 else:
                     mcp = MCP_Geometric(subvol)
