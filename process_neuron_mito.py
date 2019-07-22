@@ -1,17 +1,5 @@
-#START of MITOCHONDRIA ANALYSIS
+##START of MITOCHONDRIA ANALYSIS
 import sys
-import re
-import json
-import csv
-import gzip
-import logging
-from io import BytesIO
-from functools import partial
-from multiprocessing.pool import ThreadPool
-from collections import defaultdict
-import numpy as np
-import pandas as pd
-#START of MITOCHONDRIA ANALYSIS
 import re
 import json
 import csv
@@ -28,16 +16,11 @@ from libdvid import DVIDNodeService, encode_label_block
 from neuclease.dvid.server import fetch_server_info
 import neuclease
 from neuclease.dvid.labelmap import fetch_labelmap_voxels
-#import matplotlib.pyplot as plt
-#import matplotlib.image as mpimg
 import skimage
 from skimage import external
 from scipy.spatial.distance import euclidean
 from skimage.graph import MCP_Geometric
 import numpy as np
-#from bokeh.plotting import figure, show, output_file
-#from bokeh.io import output_notebook
-#output_notebook()
 from neuclease.dvid import fetch_labelmap_voxels
 from bokeh.palettes import Category20
 from dvidutils import LabelMapper
@@ -48,11 +31,9 @@ from neuprint import Client
 from tqdm import tqdm_notebook
 from numpy import size
 from numpy import dtype, array
-#import neuroglancer
-#neuroglancer.set_server_bind_address('0.0.0.0')
 from numpy import transpose
 from neuclease.dvid import *
-#from sklearn.cluster import KMeans
+
 
 
 def main():
@@ -67,7 +48,7 @@ def main():
 # we preprocess to gather all presynapses of given ID
 def preprocess(body_ID):
     body_ID = body_ID
-    Neurons_FB = pd.read_csv('Neurons_FB.csv')
+    Neurons_FB = pd.read_csv('/Users/loaner/OneDrive - Howard Hughes Medical Institute/Neurons_FB.csv')
     y = Neurons_FB[Neurons_FB.bodyId == int(body_ID)]
     y = y[y.type == 'pre']
     return list(y[['x','y','z']].values), len(list(y[['x','y','z']].values))
@@ -80,17 +61,9 @@ def is_mito(mito, vol):
     Tests if mitochondria can be found in the neuron of certain fetched box
     '''
     test_mito = np.where(mito == 4, 0, 1)
-    #test_vol2 = np.copy(vol)
-    #test_vol2[test_vol2 != 1] = 0
-    #test_vol2 = np.transpose(test_vol2.nonzero())
-    #test_vol2 = list(map(tuple, test_vol2))
-    #neuron_set = set(test_vol2)
-    #mito = list(map(tuple, mito))
-    #mito_set = set(mito)
+
     test_mito = test_mito.astype('uint64')
-    #print(test_mito.shape)
-    #print(transpose(test_mito.nonzero()),)
-    #print(np.sum(np.array(test_mito) & np.array(vol)))
+
     if np.sum(np.array(test_mito) & np.array(vol)) > 0:
         return True
     else: 
@@ -100,15 +73,10 @@ def is_synapse_neuron(vol, syn_cords):
     '''
     Tests if the synapse is in the neuron in terms of segmentation
     '''
-    neuron_set = transpose(vol.nonzero())#np.where(vol == BodyID, 1, 0)
+    neuron_set = transpose(vol.nonzero())
     neuron_set = [tuple(a) for a in neuron_set]
     syn_cords = [tuple(b) for b in syn_cords]
-    #synapse_set = set([(x,y,z) for x in range(99,100) for y in range(99,100) for z in range(99,100)])
-    #vol = np.copy(neuron)
-    #vol[vol != 1] = 0
-    #vol = np.transpose(neuron.nonzero())
-    #vol = list(map(tuple, vol))
-    #neuron_set = set(vol)
+    
     if syn_cords[0] in neuron_set:
          return True
     else:
@@ -135,6 +103,7 @@ def recoordinate_synapses(vol, syn_cords, r):
 def boundary_box(seg_mask):
     seg_mask = np.where(seg_mask == True, 1, 0)
     raw_cords = np.transpose(seg_mask.nonzero())
+    print(np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
     return seg_mask, (np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
 
 
@@ -177,49 +146,24 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
     dist_lst = []
     errors_from_no_mito = []
     errors_from_synapse_loc = []
-    errors_from_scale = []
-    #First we need to fetch the Neuron synapse info from neuprint
-   
-    #for i in range(len(synapses)):
-    #    Synapse = list(synapses[i])
+    errors_from_scale = []   
 
-        #We define the centerpoint of our data we fetch as the synapse location
-        #We define the dimensions of the box as well as fetch the segmentation in vol and mitochondria data as mito
-        #We then manipulate vol to make any neurons that is not the desired neuron have a cost of infinity, and the desired neuron
-        #a cost of 1
+    #We define the centerpoint of our data we fetch as the synapse location
+    #We define the dimensions of the box as well as fetch the segmentation in vol and mitochondria data as mito
+    #We then manipulate vol to make any neurons that is not the desired neuron have a cost of infinity, and the desired neuron
+    #a cost of 1
 
-    #if scale == 0:
-    #    i = 1
-    #else:
-    #scale = 3
-    #i = 2**scale
 
-    #Synapse = synapse_cords[0]
     seg_vol = seg_vol.astype('uint64')
     subvol = seg_vol.astype('float64')
     shape = subvol.shape
-    #print([31, 31, 14] in np.transpose(subvol.nonzero()))
-    #print(subvol[31][31][14])
+
     subvol[subvol == 0] = np.inf
-    #print(subvol[31][31][14])
-    #print(subvol)
-    #subvol[subvol != Body_ID] = float('inf')
-    #subvol[subvol == Body_ID] = 1
-    #subvol = np.where(subvol == Body_ID, 1, float('inf'))
+
     #Next we manipulate the mitochondria data, such that all mitochondria will be indexed if they have a cost of 1
     #Therefore, we set all voxels that were not mitochondria to 0 and took each coordinate for type of mito, to then stack together
     #This will serve as our end targets when we run the cost path
 
-    #Mito1 = np.copy(mito)
-    #Mito2 = np.copy(mito)
-    #Mito3 = np.copy(mito)
-    #Mito1[Mito1 != 1] = 0
-    #Mito1 = np.transpose(Mito1.nonzero())
-    #Mito2[Mito2 != 2] = 0
-    #Mito2 = np.transpose(Mito2.nonzero())
-    #Mito3[Mito3 != 3] = 0
-    #Mito3 = np.transpose(Mito3.nonzero())
-    #Mito_coordinates = np.vstack((Mito1,Mito2,Mito3))
     Mito_adjust = np.where(seg_mito == 4, 0, 1)
     Mito_coordinates = np.transpose(Mito_adjust.nonzero())
     #print(is_mito(seg_mito, seg_vol))
@@ -232,7 +176,6 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
 
             mcp = MCP_Geometric(subvol)
             cum_costs, tb = mcp.find_costs(local_syn, Mito_coordinates, find_all_ends = False)
-            #target_dist = np.amin(cum_costs[tuple(Mito_coordinates.transpose())])
             mito_indexes = tuple(Mito_coordinates.transpose())
             ii = cum_costs[mito_indexes].argmin()
             target_distance = cum_costs[mito_indexes][ii]
@@ -240,7 +183,6 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
             mito_voxels = seg_mito[mito_indexes]
             min_dist_mito_type = mito_voxels[ii]
             min_dist_zyx = Mito_coordinates[ii]
-            #print(min_dist_mito_type)
             if target_distance == 0:
                 dist_lst.append((i*1.0, min_dist_mito_type))
             elif i*target_distance == np.inf:
@@ -260,7 +202,6 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
                 else:
                     mcp = MCP_Geometric(subvol)
                     cum_costs, tb = mcp.find_costs(new_cords, Mito_coordinates, find_all_ends = False)
-                    #new_target_dist = np.amin(cum_costs[tuple(Mito_coordinates.transpose())])
                     mito_indexes = tuple(Mito_coordinates.transpose())
                     ii = cum_costs[mito_indexes].argmin()
                     new_target_distance = cum_costs[mito_indexes][ii]
@@ -278,15 +219,6 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
             else:
                 mcp = MCP_Geometric(subvol)
                 cum_costs, tb = mcp.find_costs(new_cords, Mito_coordinates, find_all_ends = False)
-
-                #cum_costs_mito_only = np.empty_like(cum_costs)
-                #cum_costs_mito_only[:] = np.inf
-                #cum_costs_mito_only[tuple(Mito_coordinates.transpose())] = cum_costs[tuple(Mito_coordinates.transpose())]
-
-                #i = np.unravel_index(cum_costs_mito_only.argmin(), cum_costs_mito_only.shape)
-                #min_distance = cum_costs_mito_only[i]
-                #min_distance_mito_type = seg_mito[i]
-                #print(tuple(Mito_coordinates.transpose()))
 
                 ii = cum_costs[mito_indexes].argmin()
                 new_target_distance = cum_costs[mito_indexes][ii]
@@ -327,30 +259,27 @@ def process_neuron_mito(ID):
     bodies = []
     headers = ['x', 'y', 'z', 'dist', 'mito type']
 
-    for j in range(len(synapses)):#[24477, 19905, 15340]]:
+    for j in range(len(synapses)):# example of synapse coordinate : [24477, 19905, 15340]]
         Synapse = list(synapses[j])
-        #print(Synapse)
         scale = 3
         i = 2**scale
         center_zyx = np.array(Synapse[::-1])
         boxsize1D = 250
         box = np.array([center_zyx//i - boxsize1D//i, center_zyx//i + boxsize1D//i])
-        vol = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '5696', 'segmentation', box, scale = scale)
+        vol = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '0b0b', 'segmentation', box, scale = scale)
         if len(vol) % 2 == 0:
             center = len(vol)//2
         else:
             center = len(vol) // 2 - 1
         mito = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '5696', 'mito_20190501.24734943', box, scale = scale)    
         seg_mask = (vol == Body_ID)
+        print(Synapse)
         seg_mask, local_bb = boundary_box(seg_mask)
-        #print(local_bb)
         ((z0, y0, x0),(z1,y1,x1)) = local_bb
         seg_vol = seg_mask[z0:z1+1, y0:y1+1, x0:x1+1]
         seg_mito = mito[z0:z1+1, y0:y1+1, x0:x1+1]
         local_syn = [center - z0, center - y0, center - x0]
-        #print(is_synapse_neuron(seg_vol, [local_syn]))
         dist, error_syn, error_mito, error_scale = Mito_Synapse_Distance([local_syn], seg_vol, seg_mito, Synapse)
-        #print(local_syn)
         dists.append(dist)
         if error_syn != []:
             errors_syn.append((error_syn, Body_ID))
