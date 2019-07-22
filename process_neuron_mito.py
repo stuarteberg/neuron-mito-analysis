@@ -48,7 +48,7 @@ def main():
 # we preprocess to gather all presynapses of given ID
 def preprocess(body_ID):
     body_ID = body_ID
-    Neurons_FB = pd.read_csv('/Users/loaner/OneDrive - Howard Hughes Medical Institute/Neurons_FB.csv')
+    Neurons_FB = pd.read_csv('Neurons_FB.csv')
     y = Neurons_FB[Neurons_FB.bodyId == int(body_ID)]
     y = y[y.type == 'pre']
     return list(y[['x','y','z']].values), len(list(y[['x','y','z']].values))
