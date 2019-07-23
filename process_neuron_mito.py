@@ -38,7 +38,8 @@ from neuclease.dvid import *
 
 def main():
     neuron_id = sys.argv[1]
-    result = process_neuron_mito(neuron_id)
+    file = sys.argv[2]
+    result = process_neuron_mito(neuron_id, file)
     if result is not True:
         print("Oh crap, something went wrong")
         sys.exit(1)
@@ -46,9 +47,9 @@ def main():
     print("DONE.")
 
 # we preprocess to gather all presynapses of given ID
-def preprocess(body_ID):
+def preprocess(body_ID, file):
     body_ID = body_ID
-    Neurons_FB = pd.read_csv('Neurons_FB.csv')
+    Neurons_FB = pd.read_csv(file)
     y = Neurons_FB[Neurons_FB.bodyId == int(body_ID)]
     y = y[y.type == 'pre']
     return list(y[['x','y','z']].values), len(list(y[['x','y','z']].values))
@@ -245,13 +246,13 @@ def Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists):
 
 #Main Function
 
-def process_neuron_mito(ID):
+def process_neuron_mito(ID, file):
     Mito_Dists = {}
     inf_dists = {}
 #Sample_Dists = {}
     #Preprocessing before Mito_Synapse_Distance
     Body_ID = int(ID)
-    synapses, num_synapses = preprocess(Body_ID)
+    synapses, num_synapses = preprocess(Body_ID, file)
     dists = []
     errors_syn = []
     errors_mito = []
