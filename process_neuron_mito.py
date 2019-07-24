@@ -40,7 +40,7 @@ def main():
     neuron_id = sys.argv[1]
     file = sys.argv[2]
     syn_type = sys.argv[3]
-    result = process_neuron_mito(neuron_id, file)
+    result = process_neuron_mito(neuron_id, file, syn_type)
     if result is not True:
         print("Oh crap, something went wrong")
         sys.exit(1)
@@ -105,7 +105,7 @@ def recoordinate_synapses(vol, syn_cords, r):
 def boundary_box(seg_mask):
     seg_mask = np.where(seg_mask == True, 1, 0)
     raw_cords = np.transpose(seg_mask.nonzero())
-    print(np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
+    #print(np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
     return seg_mask, (np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
 
 
@@ -253,7 +253,7 @@ def process_neuron_mito(ID, file, syn_type):
 #Sample_Dists = {}
     #Preprocessing before Mito_Synapse_Distance
     Body_ID = int(ID)
-    synapses, num_synapses = preprocess(Body_ID, file)
+    synapses, num_synapses = preprocess(Body_ID, file, syn_type)
     dists = []
     errors_syn = []
     errors_mito = []
@@ -275,7 +275,7 @@ def process_neuron_mito(ID, file, syn_type):
             center = len(vol) // 2 - 1
         mito = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '5696', 'mito_20190501.24734943', box, scale = scale)    
         seg_mask = (vol == Body_ID)
-        print(Synapse)
+        #print(Synapse)
         seg_mask, local_bb = boundary_box(seg_mask)
         ((z0, y0, x0),(z1,y1,x1)) = local_bb
         seg_vol = seg_mask[z0:z1+1, y0:y1+1, x0:x1+1]
