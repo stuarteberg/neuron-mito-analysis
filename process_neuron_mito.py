@@ -1,4 +1,4 @@
-##START of MITOCHONDRIA ANALYSIS
+##START of MITOCHONDRIA ANALYSIS with all necessary library imports
 import sys
 import re
 import json
@@ -33,14 +33,15 @@ from numpy import size
 from numpy import dtype, array
 from numpy import transpose
 from neuclease.dvid import *
-
+import vigra.filters
+from vigra.filters import multiBinaryErosion
 
 
 def main():
     neuron_id = sys.argv[1]
     file = sys.argv[2]
     syn_type = sys.argv[3]
-    result = process_neuron_mito(neuron_id, file)
+    result = process_neuron_mito(neuron_id, file, syn_type)
     if result is not True:
         print("Oh crap, something went wrong")
         sys.exit(1)
@@ -103,13 +104,19 @@ def recoordinate_synapses(vol, syn_cords, r):
 
 
 def boundary_box(seg_mask):
+    '''
+    Optimizes the minimum volume dimension required to traverse the neuron belonging to the synapse. This returns a uint8 version of the boolean seg_mask input as well as the relative coordinates of the box that will be used for the costs path.
+    '''
+    
     seg_mask = np.where(seg_mask == True, 1, 0)
     raw_cords = np.transpose(seg_mask.nonzero())
-    print(np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
     return seg_mask, (np.amin(raw_cords, axis = 0), np.amax(raw_cords, axis = 0))
 
 
 def filter_new_cords(new_cords, subvol):
+    '''
+    This eliminates any discreptancy between relative coordinates and python indexing in response to edge synapses
+    '''
     shape_x, shape_y, shape_z = subvol
     new_cord_2 = []
     for i in range(len(new_cords)):
@@ -119,6 +126,9 @@ def filter_new_cords(new_cords, subvol):
 
 
 def remove_empty(dicts):
+    '''
+    Filters the dictionary for distance distribution, as any error would be input into the mito distance as an empty list
+    '''
     new_dicts = {}
     lsts = [*dicts]
     for i in lsts:
@@ -127,6 +137,9 @@ def remove_empty(dicts):
 
 
 def Mito_segregation(Mito_Dists, Body_ID):
+    '''
+    Filter for segregation of mitochondria by type, necessary for vectorization
+    '''
     MITO1_DISTS = []
     MITO2_DISTS = []
     MITO3_DISTS = []
@@ -142,6 +155,18 @@ def Mito_segregation(Mito_Dists, Body_ID):
     return MITO1_DISTS, MITO2_DISTS, MITO3_DISTS
 
 def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):    
+    '''
+    The distance calculation function: prefilters mitochondria as well as the neuron the synapse is located on in order to calculate the distance between synapse and closest mitochondria as well as mitochondria type. Distance is neuron based, not euclidean.
+    
+    Parameters:
+                local_syn: in a list, [local_syn], are the relative coordinates of the synapse after the volume fetched is minimized
+                seg_vol: a 3-D array, represents the segmentation of the volume with respect to neuron IDs. Make sure the array is boolean or uint with just 0 and 1, such that 1 represents neuron of interest and 0 represents all other neurons.
+                
+                seg_mito: a 3-D array, represents the segmentation of mitochondria, with (1-3) representing mitochondria of type 1,2, or 3, and 4 representing NOT a mitochondria. Make sure seg_mito and seg_vol are the same shape and overlap eachother when fetched from DVID
+                
+                Synapse: list of the absolute coordinate of the synapse, because if there is no distance to be calculated, the coordinate will represent the synapse in the other lists. Important for the summation of all synapses that don't have a distance in the vectorization
+    '''
+    
     
     #First we got to initialize some empty lists and constants that we will store the list of distributions in
     i = 8
@@ -165,12 +190,15 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
     #Next we manipulate the mitochondria data, such that all mitochondria will be indexed if they have a cost of 1
     #Therefore, we set all voxels that were not mitochondria to 0 and took each coordinate for type of mito, to then stack together
     #This will serve as our end targets when we run the cost path
-
+    #We erode the mitochodria mask by 1 voxel in order to eliminate slight overlap in mitochondria mask at scale 3 with the neuron. This algorithm doesn't take into account if the mitochondria it reached is actually an overlap between another mitochondria in a neighboring neuron.
+    
+    eroded_mito = multiBinaryErosion(np.where(seg_mito != 4, 1, 0).astype('uint8'), 1)
+    eroded_seg_mito = np.where(eroded_mito == 1, seg_mito, 4)
+    Mito_preadjust = np.where(seg_vol == 1, eroded_seg_mito, 4)
     Mito_adjust = np.where(seg_mito == 4, 0, 1)
     Mito_coordinates = np.transpose(Mito_adjust.nonzero())
-    #print(is_mito(seg_mito, seg_vol))
-    #print(is_synapse_neuron(seg_vol, local_syn))
-    if is_mito(seg_mito, seg_vol) == True:
+ 
+    if is_mito(eroded_seg_mito, seg_vol) == True:
         if is_synapse_neuron(seg_vol, local_syn) == True:
             #This is the object created solely for the cost path, in order to find the relative distance between synapse and mito
             #Note that we found the minimum cost for the path because that is considered the closest distance between synapse and mito
@@ -182,7 +210,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
             ii = cum_costs[mito_indexes].argmin()
             target_distance = cum_costs[mito_indexes][ii]
                 
-            mito_voxels = seg_mito[mito_indexes]
+            mito_voxels = eroded_seg_mito[mito_indexes]
             min_dist_mito_type = mito_voxels[ii]
             min_dist_zyx = Mito_coordinates[ii]
             if target_distance == 0:
@@ -208,7 +236,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
                     ii = cum_costs[mito_indexes].argmin()
                     new_target_distance = cum_costs[mito_indexes][ii]
                 
-                    mito_voxels = seg_mito[mito_indexes]
+                    mito_voxels = eroded_seg_mito[mito_indexes]
                     min_dist_mito_type = mito_voxels[ii]
                     min_dist_zyx = Mito_coordinates[ii]
                     dist_lst.append((i*new_target_distance, min_dist_mito_type))
@@ -225,7 +253,7 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
                 ii = cum_costs[mito_indexes].argmin()
                 new_target_distance = cum_costs[mito_indexes][ii]
                 
-                mito_voxels = seg_mito[mito_indexes]
+                mito_voxels = eroded_seg_mito[mito_indexes]
                 min_dist_mito_type = mito_voxels[ii]
                 min_dist_zyx = Mito_coordinates[ii]                                 
                 
@@ -233,7 +261,6 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
                     errors_from_scale.append(Synapse)
                 else:
                     assert i*new_target_distance != np.inf
-                    #print(min_dist_mito_type)
                     dist_lst.append((i*new_target_distance, min_dist_mito_type))
     else:
         errors_from_no_mito.append(Synapse)
@@ -250,10 +277,9 @@ def Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists):
 def process_neuron_mito(ID, file, syn_type):
     Mito_Dists = {}
     inf_dists = {}
-#Sample_Dists = {}
     #Preprocessing before Mito_Synapse_Distance
     Body_ID = int(ID)
-    synapses, num_synapses = preprocess(Body_ID, file)
+    synapses, num_synapses = preprocess(Body_ID, file, syn_type)
     dists = []
     errors_syn = []
     errors_mito = []
@@ -275,7 +301,6 @@ def process_neuron_mito(ID, file, syn_type):
             center = len(vol) // 2 - 1
         mito = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '5696', 'mito_20190501.24734943', box, scale = scale)    
         seg_mask = (vol == Body_ID)
-        print(Synapse)
         seg_mask, local_bb = boundary_box(seg_mask)
         ((z0, y0, x0),(z1,y1,x1)) = local_bb
         seg_vol = seg_mask[z0:z1+1, y0:y1+1, x0:x1+1]
