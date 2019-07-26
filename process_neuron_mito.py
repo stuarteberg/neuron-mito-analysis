@@ -195,9 +195,9 @@ def Mito_Synapse_Distance(local_syn, seg_vol, seg_mito, Synapse):
     eroded_mito = multiBinaryErosion(np.where(seg_mito != 4, 1, 0).astype('uint8'), 1)
     eroded_seg_mito = np.where(eroded_mito == 1, seg_mito, 4)
     Mito_preadjust = np.where(seg_vol == 1, eroded_seg_mito, 4)
-    Mito_adjust = np.where(seg_mito == 4, 0, 1)
+    Mito_adjust = np.where(Mito_preadjust == 4, 0, 1)
     Mito_coordinates = np.transpose(Mito_adjust.nonzero())
- 
+
     if is_mito(eroded_seg_mito, seg_vol) == True:
         if is_synapse_neuron(seg_vol, local_syn) == True:
             #This is the object created solely for the cost path, in order to find the relative distance between synapse and mito
@@ -356,7 +356,7 @@ def process_neuron_mito(ID, file, syn_type):
         counts3 = counts3.tolist()
         
     All_Neuro_Attr.update({Body_ID: Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists)})
-    with open(f'{Body_ID}_dimensions.json', 'w') as outfile:
+    with open(f'{Body_ID}_sample.json', 'w') as outfile:
         json.dump(All_Neuro_Attr, outfile)
 
     return True
