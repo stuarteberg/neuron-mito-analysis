@@ -1,10 +1,13 @@
 ##START of MITOCHONDRIA ANALYSIS with all necessary library imports
+import os
 import sys
 import re
 import json
 import csv
 import gzip
 import logging
+import argparse
+
 from io import BytesIO
 from functools import partial
 from multiprocessing.pool import ThreadPool
@@ -38,10 +41,19 @@ from vigra.filters import multiBinaryErosion
 
 
 def main():
-    neuron_id = sys.argv[1]
-    file = sys.argv[2]
-    syn_type = sys.argv[3]
-    result = process_neuron_mito(neuron_id, file, syn_type)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('neuron_id', type=int, help='body ID of the neuron to process')
+    parser.add_argument('neuron_info_file', help='CSV file of neuron synapse info')
+    parser.add_argument('synapse_type', choices=['pre', 'post'], help='The type of synapse')
+    parser.add_argument('output_directory', help='Where to store the results')
+    args = parser.parse_args()
+
+    os.makedirs(args.output_directory, exist_ok=True)
+    result = process_neuron_mito( args.neuron_id,
+                                  args.neuron_info_file,
+                                  args.synapse_type,
+                                  args.output_directory )
+
     if result is not True:
         print("Oh crap, something went wrong")
         sys.exit(1)
@@ -274,7 +286,7 @@ def Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists):
 
 #Main Function
 
-def process_neuron_mito(ID, file, syn_type):
+def process_neuron_mito(ID, file, syn_type, output_directory):
     Mito_Dists = {}
     inf_dists = {}
     #Preprocessing before Mito_Synapse_Distance
@@ -320,7 +332,7 @@ def process_neuron_mito(ID, file, syn_type):
         else:
             bodies.append([str(x) for x in tuple(Synapse) + (0, 0)])
 
-    with open(f'{Body_ID}_synapse_info.csv', 'w') as csvFile:
+    with open(f'{output_directory}/{Body_ID}_synapse_info.csv', 'w') as csvFile:
         writer = csv.writer(csvFile)
         writer.writerow(headers)
         writer.writerows(bodies)
@@ -357,7 +369,7 @@ def process_neuron_mito(ID, file, syn_type):
         counts3 = counts3.tolist()
         
     All_Neuro_Attr.update({Body_ID: Attribute_Creator(Body_ID, counts1, counts2, counts3, inf_dists)})
-    with open(f'{Body_ID}_sample.json', 'w') as outfile:
+    with open(f'{output_directory}/{Body_ID}_dimensions.json', 'w') as outfile:
         json.dump(All_Neuro_Attr, outfile)
 
     return True
