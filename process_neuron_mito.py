@@ -301,6 +301,7 @@ def process_neuron_mito(ID, file, syn_type):
             center = len(vol) // 2 - 1
         mito = fetch_labelmap_voxels('emdata4.int.janelia.org:8900', '5696', 'mito_20190501.24734943', box, scale = scale)    
         seg_mask = (vol == Body_ID)
+
         seg_mask, local_bb = boundary_box(seg_mask)
         ((z0, y0, x0),(z1,y1,x1)) = local_bb
         seg_vol = seg_mask[z0:z1+1, y0:y1+1, x0:x1+1]
